@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 HARD_DELETE = 0
 SOFT_DELETE = 1
 SOFT_DELETE_CASCADE = 2
@@ -8,3 +10,5 @@ DELETED_INVISIBLE = 10
 DELETED_VISIBLE_BY_FIELD = DELETED_VISIBLE_BY_PK = 11
 DELETED_ONLY_VISIBLE = 12
 DELETED_VISIBLE = 13
+
+DEFAULT_DELETED = timezone.datetime(1970, 1, 1, tzinfo=timezone.now().tzinfo)
