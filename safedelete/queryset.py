@@ -4,7 +4,7 @@ import django
 from django.db.models import query
 from django.db.models.query_utils import Q
 
-from .config import (DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, DELETED_VISIBLE,
+from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, DELETED_VISIBLE,
                      DELETED_VISIBLE_BY_FIELD)
 
 
@@ -104,13 +104,10 @@ class SafeDeleteQueryset(query.QuerySet):
 
             # Add a query manually, QuerySet.filter returns a clone.
             # QuerySet._fetch_all cannot work with clones.
-            self.query.add_q(
-                Q(
-                    deleted__isnull=visibility in (
-                        DELETED_INVISIBLE, DELETED_VISIBLE_BY_FIELD
-                    )
-                )
-            )
+            if visibility in [DELETED_INVISIBLE, DELETED_VISIBLE_BY_FIELD]:
+                self.query.add_q(Q(deleted=DEFAULT_DELETED))
+            else:
+                self.query.add_q(~Q(deleted=DEFAULT_DELETED))
 
             self._safedelete_filter_applied = True
 

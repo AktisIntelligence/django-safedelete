@@ -4,7 +4,7 @@ from django.db import models, router
 from django.utils import timezone
 
 from .config import (HARD_DELETE, HARD_DELETE_NOCASCADE, NO_DELETE,
-                     SOFT_DELETE, SOFT_DELETE_CASCADE)
+                     SOFT_DELETE, SOFT_DELETE_CASCADE, DEFAULT_DELETED)
 from .managers import (SafeDeleteAllManager, SafeDeleteDeletedManager,
                        SafeDeleteManager)
 from .signals import post_softdelete, post_undelete, pre_softdelete
@@ -38,7 +38,7 @@ class SafeDeleteModel(models.Model):
 
     :attribute deleted:
         DateTimeField set to the moment the object was deleted. Is set to
-        ``None`` if the object has not been deleted.
+        ``1970-01-01`` if the object has not been deleted.
 
     :attribute _safedelete_policy: define what happens when you delete an object.
         It can be one of ``HARD_DELETE``, ``SOFT_DELETE``, ``SOFT_DELETE_CASCADE``, ``NO_DELETE`` and ``HARD_DELETE_NOCASCADE``.
@@ -62,7 +62,7 @@ class SafeDeleteModel(models.Model):
 
     _safedelete_policy = SOFT_DELETE
 
-    deleted = models.DateTimeField(editable=False, null=True)
+    deleted = models.DateTimeField(editable=False, default=DEFAULT_DELETED)
 
     objects = SafeDeleteManager()
     all_objects = SafeDeleteAllManager()
@@ -90,9 +90,9 @@ class SafeDeleteModel(models.Model):
 
         was_undeleted = False
         if not keep_deleted:
-            if self.deleted and self.pk:
+            if self.deleted != DEFAULT_DELETED and self.pk:
                 was_undeleted = True
-            self.deleted = None
+            self.deleted = DEFAULT_DELETED
 
         super(SafeDeleteModel, self).save(**kwargs)
 
@@ -113,12 +113,12 @@ class SafeDeleteModel(models.Model):
         """
         current_policy = force_policy or self._safedelete_policy
 
-        assert self.deleted
+        assert self.deleted != DEFAULT_DELETED
         self.save(keep_deleted=False, **kwargs)
 
         if current_policy == SOFT_DELETE_CASCADE:
             for related in related_objects(self):
-                if is_safedelete_cls(related.__class__) and related.deleted:
+                if is_safedelete_cls(related.__class__) and related.deleted != DEFAULT_DELETED:
                     related.undelete()
 
     def delete(self, force_policy=None, **kwargs):
@@ -180,43 +180,49 @@ class SafeDeleteModel(models.Model):
                 return True
         return False
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # >>> TL: We don't want to override the check as we don't want to check unique constraint against deleted object
+    # >>> Instead the user have to set delete to be part of the unique_together constraint (since it needs to be checked
+    # >>> at db level too)
+
     # We need to overwrite this check to ensure uniqueness is also checked
     # against "deleted" (but still in db) objects.
     # FIXME: Better/cleaner way ?
-    def _perform_unique_checks(self, unique_checks):
-        errors = {}
+    # def _perform_unique_checks(self, unique_checks):
+    #     errors = {}
 
-        for model_class, unique_check in unique_checks:
-            lookup_kwargs = {}
-            for field_name in unique_check:
-                f = self._meta.get_field(field_name)
-                lookup_value = getattr(self, f.attname)
-                if lookup_value is None:
-                    continue
-                if f.primary_key and not self._state.adding:
-                    continue
-                lookup_kwargs[str(field_name)] = lookup_value
-            if len(unique_check) != len(lookup_kwargs):
-                continue
+    #     for model_class, unique_check in unique_checks:
+    #         lookup_kwargs = {}
+    #         for field_name in unique_check:
+    #             f = self._meta.get_field(field_name)
+    #             lookup_value = getattr(self, f.attname)
+    #             if lookup_value is None:
+    #                 continue
+    #             if f.primary_key and not self._state.adding:
+    #                 continue
+    #             lookup_kwargs[str(field_name)] = lookup_value
+    #         if len(unique_check) != len(lookup_kwargs):
+    #             continue
 
-            # This is the changed line
-            if hasattr(model_class, 'all_objects'):
-                qs = model_class.all_objects.filter(**lookup_kwargs)
-            else:
-                qs = model_class._default_manager.filter(**lookup_kwargs)
+    #         # This is the changed line
+    #         if hasattr(model_class, 'all_objects'):
+    #             qs = model_class.all_objects.filter(**lookup_kwargs)
+    #         else:
+    #             qs = model_class._default_manager.filter(**lookup_kwargs)
 
-            model_class_pk = self._get_pk_val(model_class._meta)
-            if not self._state.adding and model_class_pk is not None:
-                qs = qs.exclude(pk=model_class_pk)
-            if qs.exists():
-                if len(unique_check) == 1:
-                    key = unique_check[0]
-                else:
-                    key = models.base.NON_FIELD_ERRORS
-                errors.setdefault(key, []).append(
-                    self.unique_error_message(model_class, unique_check)
-                )
-        return errors
+    #         model_class_pk = self._get_pk_val(model_class._meta)
+    #         if not self._state.adding and model_class_pk is not None:
+    #             qs = qs.exclude(pk=model_class_pk)
+    #         if qs.exists():
+    #             if len(unique_check) == 1:
+    #                 key = unique_check[0]
+    #             else:
+    #                 key = models.base.NON_FIELD_ERRORS
+    #             errors.setdefault(key, []).append(
+    #                 self.unique_error_message(model_class, unique_check)
+    #             )
+    #     return errors
+    # ------------------------------------------------------------------------------------------------------------------
 
 
 class SafeDeleteMixin(SafeDeleteModel):
