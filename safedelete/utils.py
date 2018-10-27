@@ -30,6 +30,7 @@ def extract_objects_to_delete(obj):
     We exclude the input object from this dictionary.
     """
     collector = get_collector(obj)
+    collector.sort()
     objects_to_delete = OrderedDict()
     for model, instances in collector.data.items():
         # we don't want to have the input object in the list of objects to delete by cascade as we will handle it

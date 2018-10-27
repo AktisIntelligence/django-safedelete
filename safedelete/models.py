@@ -160,9 +160,9 @@ class SafeDeleteModel(models.Model):
                             if related.deleted == DEFAULT_DELETED:
                                 related.delete(force_policy=SOFT_DELETE, **kwargs)
                                 ids.append(related.id)
-                        log += "\n  - delete {} {} related objects".format(len(ids), model.__name__)
-                        # We should even log the ids here at a debug level
-                        log += "\n       {}".format(ids)
+                        if len(ids) != 0:
+                            log += "\n  - delete {} {} related objects".format(len(ids), model.__name__)
+                            log += "\n       {}".format(ids)
                     else:
                         log += "\n  - do not delete {} {} related objects as they can't be archived".format(
                             len(related_objects), model.__name__)
