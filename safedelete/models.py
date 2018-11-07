@@ -8,26 +8,7 @@ from .config import (HARD_DELETE, HARD_DELETE_NOCASCADE, NO_DELETE,
 from .managers import (SafeDeleteAllManager, SafeDeleteDeletedManager,
                        SafeDeleteManager)
 from .signals import post_softdelete, post_undelete, pre_softdelete
-from .utils import can_hard_delete, extract_objects_to_delete, perform_updates
-
-
-def is_safedelete_cls(cls):
-    for base in cls.__bases__:
-        # This used to check if it startswith 'safedelete', but that masks
-        # the issue inside of a test. Other clients create models that are
-        # outside of the safedelete package.
-        if base.__module__.startswith('safedelete.models'):
-            return True
-        if is_safedelete_cls(base):
-            return True
-    return False
-
-
-def is_safedelete(related):
-    warnings.warn(
-        'is_safedelete is deprecated in favor of is_safedelete_cls',
-        DeprecationWarning)
-    return is_safedelete_cls(related.__class__)
+from .utils import can_hard_delete, extract_objects_to_delete, perform_updates, is_safedelete_cls, is_deleted
 
 
 class SafeDeleteModel(models.Model):
@@ -90,7 +71,7 @@ class SafeDeleteModel(models.Model):
 
         was_undeleted = False
         if not keep_deleted:
-            if self.deleted != DEFAULT_DELETED and self.pk:
+            if is_deleted(self) and self.pk:
                 was_undeleted = True
             self.deleted = DEFAULT_DELETED
 
@@ -114,14 +95,14 @@ class SafeDeleteModel(models.Model):
         with transaction.atomic():
             current_policy = force_policy or self._safedelete_policy
 
-            assert self.deleted != DEFAULT_DELETED
+            assert is_deleted(self)
             self.save(keep_deleted=False, **kwargs)
 
             if current_policy == SOFT_DELETE_CASCADE:
                 for model, related_objects in extract_objects_to_delete(self).items():
                     if is_safedelete_cls(model):
                         for related in related_objects:
-                            if related.deleted != DEFAULT_DELETED:
+                            if is_deleted(related):
                                 related.undelete()
 
     def delete(self, force_policy=None, **kwargs):
@@ -150,14 +131,25 @@ class SafeDeleteModel(models.Model):
                 else:
                     self.delete(force_policy=HARD_DELETE, **kwargs)
 
-            elif current_policy == SOFT_DELETE_CASCADE:
-                # Soft-delete on related objects before
+            elif current_policy in [SOFT_DELETE_CASCADE, SOFT_DELETE]:
+                # Soft-delete the object, marking it as deleted. Don't do anything for cascade so it might lead to
+                # broken foreign key relationships for the ORM (pointing to objects that virtually don't exist any more)
+                self.deleted = timezone.now()
+                using = kwargs.get('using') or router.db_for_write(self.__class__, instance=self)
+                # send pre_softdelete signal
+                pre_softdelete.send(sender=self.__class__, instance=self, using=using)
+                super(SafeDeleteModel, self).save(**kwargs)
+                # send softdelete signal
+                post_softdelete.send(sender=self.__class__, instance=self, using=using)
+
+            if current_policy == SOFT_DELETE_CASCADE:
+                # Soft-delete on related objects
                 log = "Cascade delete {}:".format(self.__class__.__name__)
                 for model, related_objects in extract_objects_to_delete(self).items():
                     if is_safedelete_cls(model):
                         ids = []
                         for related in related_objects:
-                            if related.deleted == DEFAULT_DELETED:
+                            if not is_deleted(related):
                                 related.delete(force_policy=SOFT_DELETE, **kwargs)
                                 ids.append(related.id)
                         if len(ids) != 0:
@@ -175,20 +167,7 @@ class SafeDeleteModel(models.Model):
                 # Should we log something there if any update is done???
                 perform_updates(self)
 
-                # Soft-delete the original object (go in the following if statement)
-                current_policy = SOFT_DELETE
                 print(log)
-
-            if current_policy == SOFT_DELETE:
-                # Only soft-delete the object, marking it as deleted. Don't do anything for cascade so it might lead to
-                # broken foreign key relationships for the ORM (pointing to objects that virtually don't exist any more)
-                self.deleted = timezone.now()
-                using = kwargs.get('using') or router.db_for_write(self.__class__, instance=self)
-                # send pre_softdelete signal
-                pre_softdelete.send(sender=self.__class__, instance=self, using=using)
-                super(SafeDeleteModel, self).save(**kwargs)
-                # send softdelete signal
-                post_softdelete.send(sender=self.__class__, instance=self, using=using)
 
     @classmethod
     def has_unique_fields(cls):
