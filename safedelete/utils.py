@@ -1,3 +1,5 @@
+import logging
+
 import warnings
 
 from collections import OrderedDict
@@ -6,6 +8,8 @@ from django.contrib.admin.utils import NestedObjects
 from django.db import router
 
 from .config import DEFAULT_DELETED
+
+logger = logging.getLogger(__name__)
 
 
 def is_safedelete_cls(cls):
@@ -64,6 +68,9 @@ def extract_objects_to_delete(obj):
         # separately.
         if model is obj.__class__:
             instances.remove(obj)
+        # If the model is a safedelete object we also want to exclude the already deleted objects.
+        if is_safedelete_cls(model):
+            instances = [instance for instance in instances if not is_deleted(instance)]
         if len(instances) != 0:
             objects_to_delete[model] = instances
 
@@ -72,22 +79,20 @@ def extract_objects_to_delete(obj):
 
 def perform_updates(obj):
     """
-    After the delete have been done we need to perform the updates if there are any.
+    After the deletes have been done we need to perform the updates if there are any.
     Note that we don't need to do the updates for the already deleted objects.
     """
     collector = get_collector(obj)
     for model, updates in collector.field_updates.items():
-        if is_safedelete_cls(model):
-            for (field, value), objects in updates.items():
-                for obj in objects:
-                    if not is_deleted(obj):
-                        setattr(obj, field.name, value)
-                        obj.save()
-        else:
-            for (field, value), objects in updates.items():
-                for obj in objects:
-                    setattr(obj, field.name, value)
-                    obj.save()
+        for (field, value), objects in updates.items():
+            if is_safedelete_cls(model):
+                objects = [o for o in objects if not is_deleted(o)]
+            if len(objects) != 0:
+                logger.info("  > cascade update {} {} ({}={})".format(len(objects), model.__name__, field.name, value))
+                logger.debug("       {}".format([o.id for o in objects]))
+            for o in objects:
+                setattr(o, field.name, value)
+                o.save()
 
 
 def can_hard_delete(obj):

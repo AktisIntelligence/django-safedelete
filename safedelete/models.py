@@ -1,3 +1,5 @@
+import logging
+
 import warnings
 
 from django.db import models, router, transaction
@@ -10,6 +12,8 @@ from .managers import (SafeDeleteAllManager, SafeDeleteDeletedManager,
 from .signals import post_softdelete, post_undelete, pre_softdelete
 from .utils import can_hard_delete, extract_objects_to_delete, perform_updates, is_safedelete_cls, is_deleted
 
+
+logger = logging.getLogger(__name__)
 
 class SafeDeleteModel(models.Model):
     """Abstract safedelete-ready model.
@@ -144,30 +148,23 @@ class SafeDeleteModel(models.Model):
 
             if current_policy == SOFT_DELETE_CASCADE:
                 # Soft-delete on related objects
-                log = "Cascade delete {}:".format(self.__class__.__name__)
+                logger.info("Delete {} {}".format(self.__class__.__name__, self.id))
                 for model, related_objects in extract_objects_to_delete(self).items():
                     if is_safedelete_cls(model):
-                        ids = []
+                        logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
+                        logger.debug("       {}".format([related.id for related in related_objects]))
                         for related in related_objects:
-                            if not is_deleted(related):
-                                related.delete(force_policy=SOFT_DELETE, **kwargs)
-                                ids.append(related.id)
-                        if len(ids) != 0:
-                            log += "\n  - delete {} {} related objects".format(len(ids), model.__name__)
-                            log += "\n       {}".format(ids)
+                            related.delete(force_policy=SOFT_DELETE, **kwargs)
                     else:
-                        log += "\n  - do not delete {} {} related objects as they can't be archived".format(
-                            len(related_objects), model.__name__)
-                        log += "\n       {}".format([related.id for related in related_objects])
+                        logger.info("  > cascade do not delete {} {} related objects as they can't be archived".format(
+                            len(related_objects), model.__name__))
+                        logger.debug("       {}".format([related.id for related in related_objects]))
                     # We don't do anything in the else here which means that we can leave some dangling objects if they
-                    # are not safe delete models... is it what we want to do??
+                    # are not safe delete models...
 
                 # Do the updates that the delete implies.
                 # (for example in case of a relation `on_delete=models.SET_NULL`)
-                # Should we log something there if any update is done???
                 perform_updates(self)
-
-                print(log)
 
     @classmethod
     def has_unique_fields(cls):
