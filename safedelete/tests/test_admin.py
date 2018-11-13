@@ -9,6 +9,7 @@ from django.db import models
 from django.test import RequestFactory, TestCase
 
 from ..admin import SafeDeleteAdmin, highlight_deleted
+from ..config import DEFAULT_DELETED
 from ..models import SafeDeleteModel
 from .models import Article, Author, Category
 
@@ -121,4 +122,4 @@ class AdminTestCase(TestCase):
         category = Category.objects.get(
             pk=self.categories[1].pk
         )
-        self.assertFalse(category.deleted)
+        self.assertEqual(category.deleted, DEFAULT_DELETED)

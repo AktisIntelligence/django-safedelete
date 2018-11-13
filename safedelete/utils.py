@@ -51,6 +51,7 @@ def get_collector(obj):
     """
     collector = NestedObjects(using=router.db_for_write(obj))
     collector.collect([obj])
+    collector.sort()
     return collector
 
 
@@ -61,7 +62,6 @@ def extract_objects_to_delete(obj):
     We exclude the input object from this dictionary.
     """
     collector = get_collector(obj)
-    collector.sort()
     objects_to_delete = OrderedDict()
     for model, instances in collector.data.items():
         # we don't want to have the input object in the list of objects to delete by cascade as we will handle it
@@ -99,5 +99,4 @@ def can_hard_delete(obj):
     """
     Check if it would delete other objects.
     """
-    collector = get_collector(obj)
-    return bool(extract_objects_to_delete(obj, collector))
+    return bool(extract_objects_to_delete(obj))

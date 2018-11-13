@@ -15,6 +15,7 @@ from .utils import can_hard_delete, extract_objects_to_delete, perform_updates, 
 
 logger = logging.getLogger(__name__)
 
+
 class SafeDeleteModel(models.Model):
     """Abstract safedelete-ready model.
 

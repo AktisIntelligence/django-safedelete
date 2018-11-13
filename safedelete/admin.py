@@ -14,7 +14,7 @@ from django.utils.html import conditional_escape, format_html
 from django.utils.six import text_type
 from django.utils.translation import ugettext_lazy as _
 
-from .utils import related_objects
+from .utils import extract_objects_to_delete
 
 
 def highlight_deleted(obj):
@@ -127,7 +127,10 @@ class SafeDeleteAdmin(admin.ModelAdmin):
             objects_name = force_text(opts.verbose_name_plural)
         title = _("Are you sure?")
 
-        related_list = [list(related_objects(obj)) for obj in queryset]
+        related_list = []
+        for obj in queryset:
+            for model, related_objects in extract_objects_to_delete(obj).items():
+                related_list.extend(related_objects)
 
         context = {
             'title': title,
