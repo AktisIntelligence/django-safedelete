@@ -1,0 +1,5 @@
+{
+    "phabricator.uri" : "https://phabricator.cgscope.co/",
+    "arc.land.onto.default" : "master",
+    "https.blindly-trust-domains" : ["phabricator.cgscope.co"]
+}

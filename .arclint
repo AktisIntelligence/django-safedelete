@@ -1,0 +1,14 @@
+{
+    "linters": {
+        "python": {
+            "type": "pep8",
+            "include": "(\\.py$)",
+            "flags": ["--max-line-length=120"]
+        },
+        "json": {
+            "type": "json",
+            "include": "(\\.json$)",
+            "exclude": "(.*20170726.*.json$)"
+        }
+    }
+}
