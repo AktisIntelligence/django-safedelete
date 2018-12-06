@@ -55,11 +55,13 @@ def get_collector(obj):
     return collector
 
 
-def extract_objects_to_delete(obj):
+def get_objects_to_delete(obj, return_deleted=False):
     """
     Return a dictionary of objects that meed to be deleted if we want to delete the object provided as input.
 
     We exclude the input object from this dictionary.
+
+    If return_deleted is set to False it will exclude the already deleted objects.
     """
     collector = get_collector(obj)
     objects_to_delete = OrderedDict()
@@ -70,7 +72,7 @@ def extract_objects_to_delete(obj):
             instances.remove(obj)
         # If the model is a safedelete object we also want to exclude the already deleted objects.
         if is_safedelete_cls(model):
-            instances = [instance for instance in instances if not is_deleted(instance)]
+            instances = [instance for instance in instances if not is_deleted(instance) or return_deleted]
         if len(instances) != 0:
             objects_to_delete[model] = instances
 
@@ -99,4 +101,4 @@ def can_hard_delete(obj):
     """
     Check if it would delete other objects.
     """
-    return bool(extract_objects_to_delete(obj))
+    return not bool(get_objects_to_delete(obj))

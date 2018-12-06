@@ -3,6 +3,7 @@ try:
 except ImportError:
     import mock
 
+from unittest import skip
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.test import override_settings
@@ -106,16 +107,31 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
 
         SoftDeleteModel.objects.all().delete()
         self.assertEqual(SoftDeleteModel.objects.count(), 0)
+        self.assertEqual(SoftDeleteRelatedModel.objects.count(), 1)
+        self.assertEqual(SoftDeleteModel.all_objects.count(), 1)
+        self.assertEqual(SoftDeleteRelatedModel.all_objects.count(), 1)
 
         SoftDeleteRelatedModel.objects.all().delete()
+        self.assertEqual(SoftDeleteModel.objects.count(), 0)
         self.assertEqual(SoftDeleteRelatedModel.objects.count(), 0)
+        self.assertEqual(SoftDeleteModel.all_objects.count(), 1)
+        self.assertEqual(SoftDeleteRelatedModel.all_objects.count(), 1)
 
         SoftDeleteModel.deleted_objects.all().undelete(force_policy=SOFT_DELETE_CASCADE)
         self.assertEqual(SoftDeleteModel.objects.count(), 1)
         self.assertEqual(SoftDeleteRelatedModel.objects.count(), 1)
+        self.assertEqual(SoftDeleteModel.all_objects.count(), 1)
+        self.assertEqual(SoftDeleteRelatedModel.all_objects.count(), 1)
 
+    @skip("Skipping uniqueness test")
     def test_validate_unique(self):
-        """Check that uniqueness is also checked against deleted objects """
+        """
+        Check that uniqueness is also checked against deleted objects
+
+        TL: This test is disabled as we don't want to do it like that for uniqueness as we want the user to explicitly
+        specify the deleted flag in the unique statement to make sure that the database index are created properly
+        (the part of the code that was making the following test pass has been commented out)
+        """
         UniqueSoftDeleteModel.objects.create(
             name='test'
         ).delete()

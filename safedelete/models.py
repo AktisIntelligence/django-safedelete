@@ -10,7 +10,7 @@ from .config import (HARD_DELETE, HARD_DELETE_NOCASCADE, NO_DELETE,
 from .managers import (SafeDeleteAllManager, SafeDeleteDeletedManager,
                        SafeDeleteManager)
 from .signals import post_softdelete, post_undelete, pre_softdelete
-from .utils import can_hard_delete, extract_objects_to_delete, perform_updates, is_safedelete_cls, is_deleted
+from .utils import can_hard_delete, get_objects_to_delete, perform_updates, is_safedelete_cls, is_deleted
 
 
 logger = logging.getLogger(__name__)
@@ -104,7 +104,8 @@ class SafeDeleteModel(models.Model):
             self.save(keep_deleted=False, **kwargs)
 
             if current_policy == SOFT_DELETE_CASCADE:
-                for model, related_objects in extract_objects_to_delete(self).items():
+                # We get all the related objects (deleted or not) and we undelete the ones that are deleted
+                for model, related_objects in get_objects_to_delete(self, return_deleted=True).items():
                     if is_safedelete_cls(model):
                         for related in related_objects:
                             if is_deleted(related):
@@ -150,7 +151,7 @@ class SafeDeleteModel(models.Model):
             if current_policy == SOFT_DELETE_CASCADE:
                 # Soft-delete on related objects
                 logger.info("Delete {} {}".format(self.__class__.__name__, self.id))
-                for model, related_objects in extract_objects_to_delete(self).items():
+                for model, related_objects in get_objects_to_delete(self).items():
                     if is_safedelete_cls(model):
                         logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
                         logger.debug("       {}".format([related.id for related in related_objects]))
