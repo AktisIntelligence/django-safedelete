@@ -42,11 +42,15 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
         self.instance = SoftDeleteModel.objects.create()
 
     def test_softdelete(self):
-        """Deleting a model with the soft delete policy should only mask it, not delete it."""
+        """
+        Deleting a model with the soft delete policy should only mask it, not delete it.
+        """
         self.assertSoftDelete(self.instance)
 
     def test_softdelete_mixin(self):
-        """Deprecated: Deleting a SafeDeleteMixin model with the soft delete policy should only mask it, not delete it."""
+        """
+        Deprecated: Deleting a SafeDeleteMixin model with the soft delete policy should only mask it, not delete it.
+        """
         self.assertSoftDelete(SoftDeleteMixinModel.objects.create())
 
     @mock.patch('safedelete.models.post_undelete.send')

@@ -27,7 +27,8 @@ class SafeDeleteModel(models.Model):
         ``1970-01-01`` if the object has not been deleted.
 
     :attribute _safedelete_policy: define what happens when you delete an object.
-        It can be one of ``HARD_DELETE``, ``SOFT_DELETE``, ``SOFT_DELETE_CASCADE``, ``NO_DELETE`` and ``HARD_DELETE_NOCASCADE``.
+        It can be one of ``HARD_DELETE``, ``SOFT_DELETE``, ``SOFT_DELETE_CASCADE``, ``NO_DELETE`` and
+        ``HARD_DELETE_NOCASCADE``.
         Defaults to ``SOFT_DELETE``.
 
         >>> class MyModel(SafeDeleteModel):
@@ -40,7 +41,8 @@ class SafeDeleteModel(models.Model):
         The :class:`safedelete.managers.SafeDeleteManager` that returns the non-deleted models.
 
     :attribute all_objects:
-        The :class:`safedelete.managers.SafeDeleteAllManager` that returns the all models (non-deleted and soft-deleted).
+        The :class:`safedelete.managers.SafeDeleteAllManager` that returns the all models
+        (non-deleted and soft-deleted).
 
     :attribute deleted_objects:
         The :class:`safedelete.managers.SafeDeleteDeletedManager` that returns the soft-deleted models.
