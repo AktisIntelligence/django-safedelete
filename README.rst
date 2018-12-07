@@ -1,5 +1,5 @@
-Django safedelete
-=================
+Django safedelete (Aktis)
+=========================
 
 .. image:: https://travis-ci.org/makinacorpus/django-safedelete.png
     :target: https://travis-ci.org/makinacorpus/django-safedelete
@@ -7,6 +7,9 @@ Django safedelete
 .. image:: https://coveralls.io/repos/makinacorpus/django-safedelete/badge.png
     :target: https://coveralls.io/r/makinacorpus/django-safedelete
 
+
+.. NOTE::
+    This project is developed by Aktis and was originally forked from https://github.com/makinacorpus/django-safedelete
 
 What is it ?
 ------------
@@ -22,7 +25,6 @@ You can choose what happens when you delete an object :
  - it can be normally deleted (hard delete)
  - it can be hard-deleted, but if its deletion would delete other objects, it will only be masked
  - it can be never deleted or masked from your database (no delete, use with caution)
-
 
 Example
 -------
@@ -66,33 +68,23 @@ Example
     # This article will be deleted from the database.
     >>> article2.delete()
 
+Note that if you want to add any `unique_together` constraint to a model you need to add the `"deleted"` attribute to 
+it otherwise you will get unicity errors with your deleted objects.
 
 Compatibilities
 ---------------
 
-* Branch 0.2.x is compatible with django >= 1.2
-* Branch 0.3.x is compatible with django >= 1.4
-* Branch 0.4.x is compatible with django >= 1.8
-* Branch 0.5.x is compatible with django >= 1.11
+Current branch has been tested with :
 
-Current branch (0.5.x) has been tested with :
-
-*  Django 1.11 using python 2.7 and python 3.4 to 3.6.
-*  Django 2.0 using python 3.4 to 3.6.
-*  Django 2.1 using python 3.5 to 3.7.
+*  Django 1.11.11 using python 3.6.4
 
 
 Installation
 ------------
 
-Installing from pypi (using pip). ::
-
-    pip install django-safedelete
-
-
 Installing from github. ::
 
-    pip install -e git://github.com/makinacorpus/django-safedelete.git#egg=django-safedelete
+    -e git+git://github.com/AktisIntelligence/django-safedelete.git@fix_multiple_delete_call#egg=django-safedelete
 
 Add ``safedelete`` in your ``INSTALLED_APPS``:
 
@@ -119,7 +111,9 @@ the ``created`` variable if the object was soft-deleted and is now "revived".
 Documentation
 -------------
 
-The documentation is available `here <http://django-safedelete.readthedocs.org>`_. Generate your own documentation using:
+The original package documentation is available `here <http://django-safedelete.readthedocs.org>`_.
+
+Generate your own documentation using:
 
     tox -e docs
 
@@ -129,10 +123,3 @@ Licensing
 
 Please see the LICENSE file.
 
-Contacts
---------
-
-Please see the AUTHORS file.
-
-.. image:: https://drupal.org/files/imagecache/grid-3/Logo_slogan_300dpi.png
-    :target: http://www.makina-corpus.com
