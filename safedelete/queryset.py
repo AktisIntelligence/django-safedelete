@@ -14,6 +14,7 @@ from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, D
 class SafeDeleteIntegrityError(DatabaseError):
     pass
 
+
 class SafeDeleteQueryset(query.QuerySet):
     """Default queryset for the SafeDeleteManager.
 
@@ -72,7 +73,6 @@ class SafeDeleteQueryset(query.QuerySet):
         if force_visibility is not None:
             self._safedelete_force_visibility = force_visibility
         return super(SafeDeleteQueryset, self).all()
-
 
     def create(self, **kwargs):
         """
