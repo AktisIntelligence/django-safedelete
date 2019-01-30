@@ -88,8 +88,8 @@ class SafeDeleteQueryset(query.QuerySet):
 
             for field in fk_fields:
                 kwarg_key = self.get_field_name_as_id(field)
-                if field.related_model.deleted_objects.filter(id=kwargs[kwarg_key]).exists():
-                    raise SafeDeleteIntegrityError("The related {} object with id {} has been soft-deleted".format(
+                if field.related_model.deleted_objects.filter(pk=kwargs[kwarg_key]).exists():
+                    raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
                         str(field.related_model), kwargs[kwarg_key]
                     ))
 

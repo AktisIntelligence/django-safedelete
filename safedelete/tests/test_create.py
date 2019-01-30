@@ -11,6 +11,13 @@ from ..models import SafeDeleteModel
 from ..queryset import SafeDeleteIntegrityError
 
 
+class Endangered(SafeDeleteModel):
+    _safedelete_policy = SOFT_DELETE_CASCADE
+
+    key = models.CharField(max_length=2, db_index=True, primary_key=True)
+    value = models.CharField(max_length=24)
+
+
 class Genus(SafeDeleteModel):
     _safedelete_policy = SOFT_DELETE_CASCADE
 
@@ -22,6 +29,7 @@ class Species(SafeDeleteModel):
 
     name = models.TextField()
     genus = models.ForeignKey(Genus, on_delete=models.CASCADE)
+    endangered = models.ForeignKey(Endangered, on_delete=models.CASCADE, null=True)
 
 
 class CreateTestCase(TransactionTestCase):
@@ -30,8 +38,11 @@ class CreateTestCase(TransactionTestCase):
     """
 
     def setUp(self):
-        self.panthera = Genus.objects.create(name='Panthera')
-        self.lynx = Genus.objects.create(name='Lynx')
+        Endangered.objects.create(key="VU", value="Vunerable")
+        Endangered.objects.create(key="LC", value="Least Concern")
+
+        self.panthera = Genus.objects.create(name="Panthera")
+        self.lynx = Genus.objects.create(name="Lynx")
         self.lynx.delete()
 
     @override_settings(DISALLOW_FK_TO_SAFE_DELETED_OBJECTS=True)
@@ -41,7 +52,7 @@ class CreateTestCase(TransactionTestCase):
         """
         genus_id = self.panthera.id
 
-        lion = Species.objects.create(name="Lion", genus_id=genus_id)
+        lion = Species.objects.create(name="Lion", genus_id=genus_id, endangered_id="VU")
         self.assertTrue(isinstance(lion, Species))
 
     @override_settings(DISALLOW_FK_TO_SAFE_DELETED_OBJECTS=True)
@@ -49,7 +60,7 @@ class CreateTestCase(TransactionTestCase):
         """
         Make sure we haven't broken the existing functionality: should NOT be able to fk to a non-existent record.
         """
-        nonexistent_genus_id = Genus.objects.latest('id').id + 10000
+        nonexistent_genus_id = Genus.objects.latest("id").id + 10000
 
         with self.assertRaises(IntegrityError):
             Species.objects.create(name="Dog", genus_id=nonexistent_genus_id)
@@ -73,9 +84,9 @@ class CreateTestCase(TransactionTestCase):
         genus_id = self.lynx.id
 
         with self.assertRaises(SafeDeleteIntegrityError) as context:
-            Species.objects.create(name="Bobcat", genus_id=genus_id)
-            self.assertTrue(
-                'The related <class django.db.models.Genus> object with id {} has been soft-deleted'.format(genus_id)
-                in context.exception
-            )
+            Species.objects.create(name="Bobcat", genus_id=genus_id, endangered_id="LC")
+        self.assertEqual(
+            "The related <class 'safedelete.tests.test_create.Genus'> object with pk {} has been soft-deleted"
+            .format(genus_id), str(context.exception)
+        )
         self.assertFalse(Species.objects.filter(name="Bobcat").exists())
