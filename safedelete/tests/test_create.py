@@ -47,7 +47,7 @@ class CreateTestCase(TransactionTestCase):
     @override_settings(DISALLOW_FK_TO_SAFE_DELETED_OBJECTS=True)
     def test_cannot_create_with_nonexistant_fk(self):
         """
-        Make sure we haven't broken the existing functionality: should be able to fk to a non-existent record.
+        Make sure we haven't broken the existing functionality: should NOT be able to fk to a non-existent record.
         """
         nonexistent_genus_id = Genus.objects.latest('id').id + 10000
 

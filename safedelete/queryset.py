@@ -77,8 +77,8 @@ class SafeDeleteQueryset(query.QuerySet):
     def create(self, **kwargs):
         """
         When we create a new object we need to check the FK fields to make sure we are not linking to a soft-deleted
-        record.  We only need to worry about the case where it is a FK id passed in (not an fk model instance) because
-        selecting soft-deleted model instaces should have already been taken care of.
+        record.  We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
+        selecting soft-deleted model instances should have already been taken care of.
         """
         if getattr(settings, 'DISALLOW_FK_TO_SAFE_DELETED_OBJECTS', False):
             fk_fields = [
