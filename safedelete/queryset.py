@@ -1,12 +1,18 @@
 from distutils.version import LooseVersion
 
 import django
+from django.conf import settings
+from django.db import DatabaseError
 from django.db.models import query
+from django.db.models.fields.related import ForeignKey
 from django.db.models.query_utils import Q
 
 from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, DELETED_VISIBLE,
                      DELETED_VISIBLE_BY_FIELD)
 
+
+class SafeDeleteIntegrityError(DatabaseError):
+    pass
 
 class SafeDeleteQueryset(query.QuerySet):
     """Default queryset for the SafeDeleteManager.
@@ -66,6 +72,32 @@ class SafeDeleteQueryset(query.QuerySet):
         if force_visibility is not None:
             self._safedelete_force_visibility = force_visibility
         return super(SafeDeleteQueryset, self).all()
+
+
+    def create(self, **kwargs):
+        """
+        When we create a new object we need to check the FK fields to make sure we are not linking to a soft-deleted
+        record.  We only need to worry about the case where it is a FK id passed in (not an fk model instance) because
+        selecting soft-deleted model instaces should have already been taken care of.
+        """
+        if getattr(settings, 'DISALLOW_FK_TO_SAFE_DELETED_OBJECTS', False):
+            fk_fields = [
+                field for field in self.model._meta.fields
+                if isinstance(field, ForeignKey) and self.get_field_name_as_id(field) in kwargs
+            ]
+
+            for field in fk_fields:
+                kwarg_key = self.get_field_name_as_id(field)
+                if field.related_model.deleted_objects.filter(id=kwargs[kwarg_key]).exists():
+                    raise SafeDeleteIntegrityError("The related {} object with id {} has been soft-deleted".format(
+                        str(field.related_model), kwargs[kwarg_key]
+                    ))
+
+        return super(SafeDeleteQueryset, self).create(**kwargs)
+
+    @staticmethod
+    def get_field_name_as_id(field):
+        return "_".join([field.name, "id"])
 
     def _check_field_filter(self, **kwargs):
         """Check if the visibility for DELETED_VISIBLE_BY_FIELD needs t be put into effect.
