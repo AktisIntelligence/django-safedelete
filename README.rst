@@ -11,6 +11,9 @@ Django safedelete (Aktis)
 .. NOTE::
     This project is developed by Aktis and was originally forked from https://github.com/makinacorpus/django-safedelete
 
+.. NOTE::
+    Our "master" branch is `aktis-master`
+
 What is it ?
 ------------
 
@@ -84,7 +87,7 @@ Installation
 
 Installing from github. ::
 
-    -e git+git://github.com/AktisIntelligence/django-safedelete.git@fix_multiple_delete_call#egg=django-safedelete
+    -e git+git://github.com/AktisIntelligence/django-safedelete.git@v1.1#egg=django-safedelete
 
 Add ``safedelete`` in your ``INSTALLED_APPS``:
 
