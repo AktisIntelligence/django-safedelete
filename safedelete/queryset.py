@@ -80,7 +80,7 @@ class SafeDeleteQueryset(query.QuerySet):
         record.  We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
         selecting soft-deleted model instances should have already been taken care of.
         """
-        if getattr(settings, 'DISALLOW_FK_TO_SAFE_DELETED_OBJECTS', False):
+        if not getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True):
             fk_fields = [
                 field for field in self.model._meta.fields
                 if isinstance(field, ForeignKey) and self.get_field_name_as_id(field) in kwargs
