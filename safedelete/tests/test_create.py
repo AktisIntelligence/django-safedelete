@@ -3,7 +3,8 @@ try:
 except ImportError:
     import mock
 
-from django.db import models, IntegrityError
+import django
+from django.db import connection, models, IntegrityError
 from django.test import override_settings, TransactionTestCase
 
 from ..config import SOFT_DELETE_CASCADE
@@ -38,12 +39,20 @@ class CreateTestCase(TransactionTestCase):
     """
 
     def setUp(self):
+        if django.__version__ < '2':
+            # force SQLite to check foriegn keys. Django 2+ runs this code automatically.
+            connection.cursor().execute('PRAGMA foreign_keys = ON')
+
         Endangered.objects.create(key="VU", value="Vunerable")
         Endangered.objects.create(key="LC", value="Least Concern")
 
         self.panthera = Genus.objects.create(name="Panthera")
         self.lynx = Genus.objects.create(name="Lynx")
         self.lynx.delete()
+
+    def tearDown(self):
+        if django.__version__ < '2':
+            connection.cursor().execute('PRAGMA foreign_keys = OFF')
 
     @override_settings(SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS=False)
     def test_can_create_with_fk(self):
@@ -64,6 +73,7 @@ class CreateTestCase(TransactionTestCase):
 
         with self.assertRaises(IntegrityError):
             Species.objects.create(name="Dog", genus_id=nonexistent_genus_id)
+
         self.assertFalse(Species.objects.filter(name="Dog").exists())
 
     @override_settings(SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS=True)
