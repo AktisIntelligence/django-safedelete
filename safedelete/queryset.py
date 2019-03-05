@@ -143,6 +143,40 @@ class SafeDeleteQueryset(query.QuerySet):
 
             self._safedelete_filter_applied = True
 
+    @staticmethod
+    def filter_visibility_sub_queryset(sub_queryset):
+        """Add deleted filters to the subquery QuerySet.
+
+        Unlike QuerySet.filter, this does not return a clone.
+        This is because QuerySet._fetch_all cannot work with a clone.
+        """
+        force_visibility = getattr(sub_queryset, '_safedelete_force_visibility', None)
+        visibility = force_visibility \
+            if force_visibility is not None \
+            else sub_queryset._safedelete_visibility
+        if not sub_queryset._safedelete_filter_applied and \
+           visibility in (DELETED_INVISIBLE, DELETED_VISIBLE_BY_FIELD, DELETED_ONLY_VISIBLE):
+            assert sub_queryset.query.can_filter(), \
+                "Cannot filter a query once a slice has been taken."
+            if visibility in (DELETED_INVISIBLE, DELETED_VISIBLE_BY_FIELD):
+                sub_queryset.query.add_q(Q(deleted=DEFAULT_DELETED))
+            else:
+                sub_queryset.query.add_q(~Q(deleted=DEFAULT_DELETED))
+
+            sub_queryset._safedelete_filter_applied = True
+
+    def _filter_or_exclude(self, negate, *args, **kwargs):
+        """
+        Here we have to catch any queries passed which are a QuerySet and add a WHERE `model`.`deleted`
+        in the sql to filter out any objects that have been soft deleted. These get passed in as kwargs
+        so we have to loop through all and check to see if they are a QuerySet class instance
+        """
+        for _, value in kwargs.items():
+            if isinstance(value, SafeDeleteQueryset):
+                self.__class__.filter_visibility_sub_queryset(value)
+        clone = super(SafeDeleteQueryset, self)._filter_or_exclude(negate, *args, **kwargs)
+        return clone
+
     def __getitem__(self, key):
         """
         Override __getitem__ just before it hits the original queryset
