@@ -9,7 +9,7 @@ from django.db.models.query_utils import Q
 
 from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, DELETED_VISIBLE,
                      DELETED_VISIBLE_BY_FIELD)
-
+from .utils import concatenate_delete_returns
 
 class SafeDeleteIntegrityError(DatabaseError):
     pass
@@ -37,9 +37,11 @@ class SafeDeleteQueryset(query.QuerySet):
         """
         assert self.query.can_filter(), "Cannot use 'limit' or 'offset' with delete."
         # TODO: Replace this by bulk update if we can
+        delete_returns = []
         for obj in self.all():
-            obj.delete(force_policy=force_policy)
+            delete_returns.append(obj.delete(force_policy=force_policy))
         self._result_cache = None
+        return concatenate_delete_returns(*delete_returns)
     delete.alters_data = True
 
     def undelete(self, force_policy=None):

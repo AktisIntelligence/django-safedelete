@@ -71,13 +71,16 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         """Test whether custom queryset may be used without custom manager
         """
         instance = self._create_green_instance()
-        instance.delete()
+        result = instance.delete()
 
         # note that ``other_objects`` manager used
         deleted_only = CustomQuerySetModel.other_objects.deleted_only()
 
         # ensure deleted instances available
         self.assertEqual(deleted_only.count(), 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.CustomQuerySetModel": 1})
 
         # and they can be custom filtered
         self.assertEqual(deleted_only.green().count(), 1)

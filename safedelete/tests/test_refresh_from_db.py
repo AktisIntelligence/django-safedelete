@@ -21,5 +21,9 @@ class RefreshTestCase(SafeDeleteTestCase):
         """Refresh should work with DELETED_VISIBLE_BY_FIELD."""
         self.instance.refresh_from_db()
 
-        self.instance.delete()
+        result = self.instance.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.RefreshModel": 1})
+
         self.instance.refresh_from_db()

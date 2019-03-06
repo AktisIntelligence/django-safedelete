@@ -215,7 +215,12 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
 
         # Delete a country so that we can now query to see if any coffees are related to that country
         # when using a queryset as a query param
-        Country.objects.get(name="Brazil").delete()
+        with self.assertNumQueries(1 * 3 + 1):
+            # it does 4 queries because the delete is wrapped in a transaction that add a savepoint and the its release
+            result = Country.objects.get(name="Brazil").delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.Country": 1})
 
         # Check filtering for coffees from Brazil, total should not change for total coffees but countries
         # should decrease by one and the filter by country="Brazil", should now return 0 as count
@@ -265,7 +270,14 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
             self.assertEqual(other_coffees.count(), self.expected_total - len(self.AS))
 
         # Check delete the region ASIA & this should delete all countries in this region
-        Region.objects.get(name="ASIA").delete()
+        with self.assertNumQueries(6 * 3 + 3):
+            # it does that many queries because each delete is wrapped in a transaction
+            # that add a savepoint and the its release in unit tests
+            result = Region.objects.get(name="ASIA").delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 6)
+        self.assertEqual(result[1], {"safedelete.Region": 1, "safedelete.Country": 5})
+
         with self.assertNumQueries(1):
             self.assertEqual(Country.objects.count(), self.expected_total - len(self.AS))
 
@@ -318,10 +330,13 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
 
         # Delete the best coffee
         with self.assertNumQueries(len(self.AF)):
-            coffee_performances.filter(
+            result = coffee_performances.filter(
                 country__in=african_country_ids,
                 performance=max_score
             ).delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.Coffee": 1})
 
         coffee_performances = Coffee.objects.annotate(
             performance=F("customers") - F("suppliers")
@@ -358,7 +373,14 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
             country_count += len(self.country_by_region[region.name])
         self.assertEqual(countries.count(), country_count)
 
-        Region.objects.get(name="NORTH AMERICA").delete()
+        with self.assertNumQueries(4 * 3 + 3):
+            # it does that many queries because each delete is wrapped in a transaction
+            # that add a savepoint and the its release in unit tests
+            result = Region.objects.get(name="NORTH AMERICA").delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 4)
+        self.assertEqual(result[1], {"safedelete.Region": 1, "safedelete.Country": 3})
+
         with self.assertNumQueries(2):
             regions = Region.objects.all()
             self.assertEqual(regions.count(), 6)
@@ -389,7 +411,13 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         with self.assertNumQueries(1):
             no_n_or_c_coffees = n_or_c_coffees.count()
         # delete all countries in region SOUTH AMERICA
-        Country.objects.filter(region__name="SOUTH AMERICA").delete()
+        with self.assertNumQueries(6 * 3 + 1):
+            # it does that many queries because each delete is wrapped in a transaction
+            # that add a savepoint and the its release in unit tests
+            result = Country.objects.filter(region__name="SOUTH AMERICA").delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 6)
+        self.assertEqual(result[1], {"safedelete.Country": 6})
 
         with self.assertNumQueries(1):
             no_n_or_c_coffees_excluding_sa = Coffee.objects.filter(

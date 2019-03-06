@@ -58,7 +58,10 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
     @mock.patch('safedelete.models.pre_softdelete.send')
     def test_signals(self, mock_presoftdelete, mock_softdelete, mock_undelete):
         """The soft delete and undelete signals should be sent correctly for soft deleted models."""
-        self.instance.delete()
+        result = self.instance.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.SoftDeleteModel": 1})
 
         # Soft deleting the model should've sent a pre_softdelete and a post_softdelete signals.
         self.assertEqual(
@@ -95,8 +98,11 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
     def test_undelete_queryset(self):
         self.assertEqual(SoftDeleteModel.objects.count(), 1)
 
-        SoftDeleteModel.objects.all().delete()
+        result = SoftDeleteModel.objects.all().delete()
         self.assertEqual(SoftDeleteModel.objects.count(), 0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.SoftDeleteModel": 1})
 
         SoftDeleteModel.objects.all().undelete()  # Nonsense
         self.assertEqual(SoftDeleteModel.objects.count(), 0)
@@ -109,17 +115,23 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
         SoftDeleteRelatedModel.objects.create(related=SoftDeleteModel.objects.first())
         self.assertEqual(SoftDeleteRelatedModel.objects.count(), 1)
 
-        SoftDeleteModel.objects.all().delete()
+        result = SoftDeleteModel.objects.all().delete()
         self.assertEqual(SoftDeleteModel.objects.count(), 0)
         self.assertEqual(SoftDeleteRelatedModel.objects.count(), 1)
         self.assertEqual(SoftDeleteModel.all_objects.count(), 1)
         self.assertEqual(SoftDeleteRelatedModel.all_objects.count(), 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.SoftDeleteModel": 1})
 
-        SoftDeleteRelatedModel.objects.all().delete()
+        result = SoftDeleteRelatedModel.objects.all().delete()
         self.assertEqual(SoftDeleteModel.objects.count(), 0)
         self.assertEqual(SoftDeleteRelatedModel.objects.count(), 0)
         self.assertEqual(SoftDeleteModel.all_objects.count(), 1)
         self.assertEqual(SoftDeleteRelatedModel.all_objects.count(), 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.SoftDeleteRelatedModel": 1})
 
         SoftDeleteModel.deleted_objects.all().undelete(force_policy=SOFT_DELETE_CASCADE)
         self.assertEqual(SoftDeleteModel.objects.count(), 1)
@@ -159,7 +171,10 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
     def test_update_or_create_with_unique_field(self):
         # Create and soft-delete object
         obj, created = UniqueSoftDeleteModel.objects.update_or_create(name='unique-test')
-        obj.delete()
+        result = obj.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.UniqueSoftDeleteModel": 1})
         # Update it and see if it fails
         obj, created = UniqueSoftDeleteModel.objects.update_or_create(name='unique-test')
         self.assertEqual(obj.name, 'unique-test')
@@ -169,7 +184,10 @@ class SoftDeleteTestCase(SafeDeleteForceTestCase):
     def test_update_or_create_flag_with_settings_flag_active(self):
         # Create and soft-delete object
         obj, created = UniqueSoftDeleteModel.objects.update_or_create(name='unique-test')
-        obj.delete()
+        result = obj.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.UniqueSoftDeleteModel": 1})
         # Update it and see if it fails
         obj, created = UniqueSoftDeleteModel.objects.update_or_create(name='unique-test')
         self.assertEqual(obj.name, 'unique-test')
