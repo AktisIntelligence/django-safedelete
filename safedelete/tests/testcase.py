@@ -32,7 +32,10 @@ class SafeDeleteTestCase(TestCase):
         if force_policy is not None:
             instance.delete(force_policy=force_policy)
         else:
-            instance.delete()
+            result = instance.delete()
+            self.assertIsNotNone(result)
+            self.assertEqual(result[0],
+                             expected_results['before_delete']['all'] - expected_results['after_delete']['all'])
 
         self.assertEqual(
             model.objects.count(),

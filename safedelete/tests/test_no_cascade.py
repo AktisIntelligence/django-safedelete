@@ -64,7 +64,11 @@ class NoCascadeTestCase(SafeDeleteTestCase):
             parent=self.instance
         )
         self.assertSoftDelete(self.instance)
-        cascade_child.delete()
+        result = cascade_child.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.CascadeChild": 1})
+
         self.assertHardDelete(self.instance)
 
     def test_protected(self):

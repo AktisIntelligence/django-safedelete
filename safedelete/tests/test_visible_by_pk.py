@@ -77,7 +77,11 @@ class VisibilityTestCase(SafeDeleteTestCase):
     def test_access_by_passed_visible_field(self):
         """ Test wether the namefield model can be found by filtering on name. """
         name = self.namevisiblefield[0].name
-        self.namevisiblefield[0].delete()
+        result = self.namevisiblefield[0].delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.NameVisibleField": 1})
+
         self.assertRaises(
             NameVisibleField.DoesNotExist,
             NameVisibleField.objects.get,

@@ -10,7 +10,8 @@ from .config import (HARD_DELETE, HARD_DELETE_NOCASCADE, NO_DELETE,
 from .managers import (SafeDeleteAllManager, SafeDeleteDeletedManager,
                        SafeDeleteManager)
 from .signals import post_softdelete, post_undelete, pre_softdelete
-from .utils import can_hard_delete, get_objects_to_delete, perform_updates, is_safedelete_cls, is_deleted
+from .utils import can_hard_delete, concatenate_delete_returns, get_objects_to_delete, is_deleted, is_safedelete_cls,\
+    perform_updates
 
 
 logger = logging.getLogger(__name__)
@@ -121,23 +122,24 @@ class SafeDeleteModel(models.Model):
             kwargs: Passed onto :func:`save` if soft deleted.
         """
         # Wrap everything in a transaction to make sure that if something fails everything gets rolled back
+        delete_returns = []
         with transaction.atomic():
             current_policy = self._safedelete_policy if (force_policy is None) else force_policy
 
             if current_policy == NO_DELETE:
                 # Don't do anything.
-                return
+                return (0, {})
 
             elif current_policy == HARD_DELETE:
                 # Normally hard-delete the object.
-                super(SafeDeleteModel, self).delete()
+                return super(SafeDeleteModel, self).delete()
 
             elif current_policy == HARD_DELETE_NOCASCADE:
                 # Hard-delete the object only if nothing would be deleted with it
                 if not can_hard_delete(self):
-                    self.delete(force_policy=SOFT_DELETE, **kwargs)
+                    return self.delete(force_policy=SOFT_DELETE, **kwargs)
                 else:
-                    self.delete(force_policy=HARD_DELETE, **kwargs)
+                    return self.delete(force_policy=HARD_DELETE, **kwargs)
 
             elif current_policy in [SOFT_DELETE_CASCADE, SOFT_DELETE]:
                 # Soft-delete the object, marking it as deleted. Don't do anything for cascade so it might lead to
@@ -147,6 +149,7 @@ class SafeDeleteModel(models.Model):
                 # send pre_softdelete signal
                 pre_softdelete.send(sender=self.__class__, instance=self, using=using)
                 super(SafeDeleteModel, self).save(**kwargs)
+                delete_returns.append((1, {self._meta.label: 1}))
                 # send softdelete signal
                 post_softdelete.send(sender=self.__class__, instance=self, using=using)
 
@@ -158,7 +161,7 @@ class SafeDeleteModel(models.Model):
                         logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
                         logger.debug("       {}".format([related.id for related in related_objects]))
                         for related in related_objects:
-                            related.delete(force_policy=SOFT_DELETE, **kwargs)
+                            delete_returns.append(related.delete(force_policy=SOFT_DELETE, **kwargs))
                     else:
                         logger.info("  > cascade do not delete {} {} related objects as they can't be archived".format(
                             len(related_objects), model.__name__))
@@ -169,6 +172,7 @@ class SafeDeleteModel(models.Model):
                 # Do the updates that the delete implies.
                 # (for example in case of a relation `on_delete=models.SET_NULL`)
                 perform_updates(self)
+        return concatenate_delete_returns(*delete_returns)
 
     @classmethod
     def has_unique_fields(cls):
