@@ -87,7 +87,7 @@ Installation
 
 Installing from github. ::
 
-    -e git+git://github.com/AktisIntelligence/django-safedelete.git@v1.2#egg=django-safedelete
+    -e git+git://github.com/AktisIntelligence/django-safedelete.git@v1.3#egg=django-safedelete
 
 Add ``safedelete`` in your ``INSTALLED_APPS``:
 
