@@ -11,6 +11,7 @@ from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, D
                      DELETED_VISIBLE_BY_FIELD)
 from .utils import concatenate_delete_returns
 
+
 class SafeDeleteIntegrityError(DatabaseError):
     pass
 
