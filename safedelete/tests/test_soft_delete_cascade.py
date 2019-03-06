@@ -59,7 +59,10 @@ class SimpleTest(TestCase):
         self.assertEqual(Category.objects.count(), 3)
         self.assertEqual(Press.objects.count(), 1)
 
-        self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        result = self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 3)
+        self.assertEqual(result[1], {"safedelete.Author": 1, "safedelete.Article": 1, "safedelete.Press": 1})
 
         self.assertEqual(Author.objects.count(), 2)
         self.assertEqual(Author.all_objects.count(), 3)
@@ -70,7 +73,10 @@ class SimpleTest(TestCase):
 
     def test_soft_delete_cascade_with_normal_model(self):
         PressNormalModel.objects.create(name='press 0', article=self.articles[2])
-        self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        result = self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 3)
+        self.assertEqual(result[1], {"safedelete.Author": 1, "safedelete.Article": 1, "safedelete.Press": 1})
 
         self.assertEqual(Author.objects.count(), 2)
         self.assertEqual(Author.all_objects.count(), 3)
@@ -82,16 +88,32 @@ class SimpleTest(TestCase):
     def test_soft_delete_cascade_with_abstract_model(self):
         ArticleView.objects.create(article=self.articles[2])
 
-        self.articles[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        result = self.articles[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 3)
+        self.assertEqual(result[1], {"safedelete.Article": 1, "safedelete.ArticleView": 1, "safedelete.Press": 1})
 
         self.assertEqual(Article.objects.count(), 2)
         self.assertEqual(Article.all_objects.count(), 3)
-
         self.assertEqual(ArticleView.objects.count(), 0)
         self.assertEqual(ArticleView.all_objects.count(), 1)
+        self.assertEqual(Press.objects.count(), 0)
+        self.assertEqual(Press.all_objects.count(), 1)
 
     def test_undelete_with_soft_delete_cascade_policy(self):
-        self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        result = self.authors[2].delete(force_policy=SOFT_DELETE_CASCADE)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 3)
+        self.assertEqual(result[1], {"safedelete.Author": 1, "safedelete.Article": 1, "safedelete.Press": 1})
+        self.assertEqual(Author.objects.count(), 2)
+        self.assertEqual(Author.all_objects.count(), 3)
+        self.assertEqual(Article.objects.count(), 2)
+        self.assertEqual(Article.all_objects.count(), 3)
+        self.assertEqual(Category.objects.count(), 3)
+        self.assertEqual(Category.all_objects.count(), 3)
+        self.assertEqual(Press.objects.count(), 0)
+        self.assertEqual(Press.all_objects.count(), 1)
+
         self.authors[2].undelete(force_policy=SOFT_DELETE_CASCADE)
 
         self.assertEqual(Author.objects.count(), 3)

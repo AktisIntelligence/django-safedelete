@@ -102,3 +102,21 @@ def can_hard_delete(obj):
     Check if it would delete other objects.
     """
     return not bool(get_objects_to_delete(obj))
+
+
+def concatenate_delete_returns(*args):
+    """
+    This method allow to concatenate the return values of multiple deletes.
+    This is useful when we override a delete method so it automatically deletes other objects we can then return
+    an accurate result of the number of entities deleted.
+    """
+    # the return of a delete is a tuple with:
+    #  - total number of objects deleted
+    #  - a dict with the number of objects deleted per models
+    concatenated = [0, {}]
+    for return_value in args:
+        concatenated[0] += return_value[0]
+        for model, count in return_value[1].items():
+            concatenated[1].setdefault(model, 0)
+            concatenated[1][model] += count
+    return tuple(concatenated)

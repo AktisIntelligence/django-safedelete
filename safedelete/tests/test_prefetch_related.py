@@ -25,11 +25,23 @@ class PrefetchTestCase(SafeDeleteTestCase):
         PrefetchSister.objects.create(sibling=brother1)
         PrefetchSister.objects.create(sibling=brother1)
         PrefetchSister.objects.create(sibling=brother1)
-        PrefetchSister.objects.create(sibling=brother1).delete()
+        result = PrefetchSister.objects.create(sibling=brother1).delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.PrefetchSister": 1})
+
         PrefetchSister.objects.create(sibling=brother2)
         PrefetchSister.objects.create(sibling=brother2)
-        PrefetchSister.objects.create(sibling=brother2).delete()
-        PrefetchSister.objects.create(sibling=brother2).delete()
+
+        result = PrefetchSister.objects.create(sibling=brother2).delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.PrefetchSister": 1})
+
+        result = PrefetchSister.objects.create(sibling=brother2).delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 1)
+        self.assertEqual(result[1], {"safedelete.PrefetchSister": 1})
 
     def test_prefetch_related(self):
         """prefetch_related() queryset should not be filtered by core_filter."""

@@ -18,12 +18,20 @@ class NoDeleteTestCase(SafeDeleteForceTestCase):
         Normally when deleting a model, it can no longer be refreshed from
         the database and will raise a DoesNotExist exception.
         """
-        self.instance.delete()
+        result = self.instance.delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 0)
+        self.assertEqual(result[1], {})
+
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.deleted, DEFAULT_DELETED)
 
     def test_no_delete_manager(self):
         """Test whether models with NO_DELETE are impossible to delete via the manager."""
-        NoDeleteModel.objects.all().delete()
+        result = NoDeleteModel.objects.all().delete()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], 0)
+        self.assertEqual(result[1], {})
+
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.deleted, DEFAULT_DELETED)
