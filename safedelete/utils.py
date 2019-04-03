@@ -91,7 +91,7 @@ def perform_updates(obj):
                 objects = [o for o in objects if not is_deleted(o)]
             if len(objects) != 0:
                 logger.info("  > cascade update {} {} ({}={})".format(len(objects), model.__name__, field.name, value))
-                logger.debug("       {}".format([o.id for o in objects]))
+                logger.debug("       {}".format([o.pk for o in objects]))
             for o in objects:
                 setattr(o, field.name, value)
                 o.save()

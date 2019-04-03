@@ -155,17 +155,17 @@ class SafeDeleteModel(models.Model):
 
             if current_policy == SOFT_DELETE_CASCADE:
                 # Soft-delete on related objects
-                logger.info("Delete {} {}".format(self.__class__.__name__, self.id))
+                logger.info("Delete {} {}".format(self.__class__.__name__, self.pk))
                 for model, related_objects in get_objects_to_delete(self).items():
                     if is_safedelete_cls(model):
                         logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
-                        logger.debug("       {}".format([related.id for related in related_objects]))
+                        logger.debug("       {}".format([related.pk for related in related_objects]))
                         for related in related_objects:
                             delete_returns.append(related.delete(force_policy=SOFT_DELETE, **kwargs))
                     else:
                         logger.info("  > cascade do not delete {} {} related objects as they can't be archived".format(
                             len(related_objects), model.__name__))
-                        logger.debug("       {}".format([related.id for related in related_objects]))
+                        logger.debug("       {}".format([related.pk for related in related_objects]))
                     # We don't do anything in the else here which means that we can leave some dangling objects if they
                     # are not safe delete models...
 
