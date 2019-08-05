@@ -2,14 +2,16 @@ from distutils.version import LooseVersion
 
 import django
 from django.conf import settings
-from django.db import DatabaseError
+from django.db import DatabaseError, transaction
 from django.db.models import query
 from django.db.models.fields.related import ForeignKey
 from django.db.models.query_utils import Q
+from django.utils import timezone
 
 from .config import (DEFAULT_DELETED, DELETED_INVISIBLE, DELETED_ONLY_VISIBLE, DELETED_VISIBLE,
-                     DELETED_VISIBLE_BY_FIELD)
-from .utils import concatenate_delete_returns
+                     DELETED_VISIBLE_BY_FIELD, HARD_DELETE, HARD_DELETE_NOCASCADE, NO_DELETE, SOFT_DELETE_CASCADE,
+                     SOFT_DELETE)
+from .utils import concatenate_delete_returns, get_objects_to_delete, is_safedelete_cls, perform_updates
 
 
 class SafeDeleteIntegrityError(DatabaseError):
@@ -28,20 +30,46 @@ class SafeDeleteQueryset(query.QuerySet):
 
     def delete(self, force_policy=None):
         """Overrides bulk delete behaviour.
-
-        .. note::
-            The current implementation loses performance on bulk deletes in order
-            to safely delete objects according to the deletion policies set.
+        Note that like Django implementation we don't call the custom delete of each models so if they have any magic
+        in them it won't be applied.
 
         .. seealso::
             :py:func:`safedelete.models.SafeDeleteModel.delete`
         """
         assert self.query.can_filter(), "Cannot use 'limit' or 'offset' with delete."
-        # TODO: Replace this by bulk update if we can
-        delete_returns = []
-        for obj in self.all():
-            delete_returns.append(obj.delete(force_policy=force_policy))
-        self._result_cache = None
+        with transaction.atomic():
+            current_policy = self.model._get_safelete_policy(force_policy=force_policy)
+            delete_returns = []
+            if current_policy == NO_DELETE:
+                # Don't do anything.
+                return (0, {})
+            elif current_policy == HARD_DELETE:
+                # Normally hard-delete the objects (bulk delete from Django)
+                return super().delete()
+            elif current_policy == HARD_DELETE_NOCASCADE:
+                # This is not optimised but we don't use it for now anyway
+                delete_returns = []
+                for obj in self.all():
+                    delete_returns.append(obj.delete(force_policy=force_policy))
+                self._result_cache = None
+                return concatenate_delete_returns(*delete_returns)
+            elif current_policy == SOFT_DELETE:
+                nb_objects = super().count()
+                self.update(deleted=timezone.now())
+                delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
+
+            elif current_policy == SOFT_DELETE_CASCADE:
+                queryset_objects = list(super().all())
+                delete_returns.append(self.delete(force_policy=SOFT_DELETE))
+                # Soft-delete on related objects
+                for model, related_objects in get_objects_to_delete(queryset_objects).items():
+                    if is_safedelete_cls(model):
+                        nb_objects = len(related_objects)
+                        related_objects_qs = model.objects.filter(pk__in=[o.pk for o in related_objects])
+                        delete_returns.append(related_objects_qs.delete(force_policy=SOFT_DELETE))
+                # Do the updates that the delete implies.
+                # (for example in case of a relation `on_delete=models.SET_NULL`)
+                perform_updates(queryset_objects)
         return concatenate_delete_returns(*delete_returns)
     delete.alters_data = True
 
@@ -186,7 +214,6 @@ class SafeDeleteQueryset(query.QuerySet):
         to apply the filter visibility method.
         """
         self._filter_visibility()
-
         return super(SafeDeleteQueryset, self).__getitem__(key)
 
     def __getattribute__(self, name):

@@ -128,9 +128,8 @@ class SafeDeleteAdmin(admin.ModelAdmin):
         title = _("Are you sure?")
 
         related_list = []
-        for obj in queryset:
-            for model, related_objects in get_objects_to_delete(obj).items():
-                related_list.extend(related_objects)
+        for model, related_objects in get_objects_to_delete(queryset).items():
+            related_list.extend(related_objects)
 
         context = {
             'title': title,
