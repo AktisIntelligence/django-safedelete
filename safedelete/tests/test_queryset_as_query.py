@@ -1,8 +1,6 @@
 from django.db import models
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Q, Avg, Max, Subquery
+from django.db.models import F, Q, Max, Subquery
 
-from ..managers import SafeDeleteManager, SafeDeleteQueryset
 from ..models import SafeDeleteModel, SOFT_DELETE_CASCADE
 from .testcase import SafeDeleteTestCase
 
