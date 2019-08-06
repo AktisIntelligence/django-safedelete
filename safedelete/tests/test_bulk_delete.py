@@ -111,7 +111,7 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 1)
         self.assertEqual(Document2.deleted_objects.count(), 1)
 
-    def test_delete_bulk_all_references(self):
+    def test_bulk_delete_all_references(self):
         """
         Test the bulk delete (aka query set delete). It should significantly reduce the number of queries compare to an
         iterative delete.
@@ -149,7 +149,7 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 0)
 
-    def test_delete_bulk_all_documents_2(self):
+    def test_bulk_delete_all_documents_2(self):
         """
         Test the bulk delete (aka query set delete). It should significantly reduce the number of queries compare to an
         iterative delete.
@@ -184,7 +184,7 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 3)
 
-    def test_delete_bulk_some_documents_2(self):
+    def test_bulk_delete_some_documents_2(self):
         """
         Test the bulk delete (aka query set delete). It should significantly reduce the number of queries compare to an
         iterative delete.
@@ -218,3 +218,15 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Reference.deleted_objects.count(), 0)
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 2)
+
+    def test_bulk_delete_empty_queryset(self):
+        """
+        Test the bulk delete on an empty query set works.
+        """
+        self.assertEqual(Reference.objects.count(), 3)
+        self.assertEqual(Document1.objects.count(), 2)
+        self.assertEqual(Document2.objects.count(), 3)
+        Document2.objects.filter(pk__in=[]).delete()
+        self.assertEqual(Reference.objects.count(), 3)
+        self.assertEqual(Document1.objects.count(), 2)
+        self.assertEqual(Document2.objects.count(), 3)

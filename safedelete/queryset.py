@@ -48,18 +48,18 @@ class SafeDeleteQueryset(query.QuerySet):
                 return super(SafeDeleteQueryset, self).delete()
             elif current_policy == HARD_DELETE_NOCASCADE:
                 # This is not optimised but we don't use it for now anyway
-                delete_returns = []
                 for obj in self.all():
                     delete_returns.append(obj.delete(force_policy=force_policy))
                 self._result_cache = None
-                return concatenate_delete_returns(*delete_returns)
             elif current_policy == SOFT_DELETE:
-                nb_objects = super(SafeDeleteQueryset, self).count()
+                nb_objects = self.count()
                 self.update(deleted=timezone.now())
                 delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
-
             elif current_policy == SOFT_DELETE_CASCADE:
-                queryset_objects = list(super(SafeDeleteQueryset, self).all())
+                queryset_objects = list(self.all())
+                if len(queryset_objects) == 0:
+                    # If it is an empty query set nothing to do
+                    return (0, {})
                 delete_returns.append(self.delete(force_policy=SOFT_DELETE))
                 # Soft-delete on related objects
                 for model, related_objects in get_objects_to_delete(queryset_objects).items():
