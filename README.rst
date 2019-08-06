@@ -1,8 +1,8 @@
 Django safedelete (Aktis)
 =========================
 
-.. image:: https://travis-ci.org/makinacorpus/django-safedelete.png
-    :target: https://travis-ci.org/makinacorpus/django-safedelete
+.. image:: https://travis-ci.org/AktisIntelligence/django-safedelete.png
+    :target: https://travis-ci.org/AktisIntelligence/django-safedelete
 
 .. image:: https://coveralls.io/repos/makinacorpus/django-safedelete/badge.png
     :target: https://coveralls.io/r/makinacorpus/django-safedelete
