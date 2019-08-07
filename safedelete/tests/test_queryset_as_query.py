@@ -327,7 +327,7 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         self.assertEqual(max_score, best_coffee_score)
 
         # Delete the best coffee
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(6):
             result = coffee_performances.filter(
                 country__in=african_country_ids,
                 performance=max_score
@@ -409,7 +409,7 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         with self.assertNumQueries(1):
             no_n_or_c_coffees = n_or_c_coffees.count()
         # delete all countries in region SOUTH AMERICA
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(4):
             result = Country.objects.filter(region__name="SOUTH AMERICA").delete()
         self.assertIsNotNone(result)
         self.assertEqual(result[0], 6)

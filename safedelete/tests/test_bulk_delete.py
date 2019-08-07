@@ -125,17 +125,16 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 0)
 
-        with self.assertNumQueries(13):
+        with self.assertNumQueries(10):
             # Delete all the references should not delete any document but should set the reference in the
             # corresponding documents to None.
-            # The 13 queries are:
-            #   - 4 for the transaction (savepoint and release savepoint)s
+            # The 10 queries are:
+            #   - 2 for the transaction (savepoint and release savepoint)s
             #   - 1 for select all the references that are not deleted
-            #   - 1 for delete them (update the deleted field on those references)
-            #   - 1 to get the count of reference we deleted for the return value of the delete method
+            #   - 1 for deleting them (update the deleted field on those references)
             #   - 2 for the select on documents to check which ones need to be cascade deleted
             #   - 2 for the select on documents to check which ones need to be updated (for the SET_NULL)
-            #   - 1 for the update of the reference to None
+            #   - 2 for the update of the reference to None in the 2 document tables
             # The 2 times request to get the objects to cascade delete and then update should be merged to be honest
             # but they are left like that for now for sake of simplicity
             Reference.objects.all().delete()
@@ -163,16 +162,13 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 0)
 
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(4):
             # Delete all the references should not delete any document but should set the reference in the
             # corresponding documents to None.
-            # The 7 queries are:
-            #   - 4 for the transaction (savepoint and release savepoint)s
+            # The 4 queries are:
+            #   - 2 for the transaction (savepoint and release savepoint)s
             #   - 1 for select all the references that are not deleted
-            #   - 1 for delete them (update the deleted field on those references)
-            #   - 1 to get the count of reference we deleted for the return value of the delete method
-            # The 2 times request to get the objects to cascade delete and then update should be merged to be honest
-            # but they are left like that for now for sake of simplicity
+            #   - 1 for deleting them (update the deleted field on those references)
             Document2.objects.all().delete()
 
         self.assertEqual(Reference.objects.count(), 3)
@@ -198,16 +194,13 @@ class BulkDeleteTestCase(TestCase):
         self.assertEqual(Document1.deleted_objects.count(), 0)
         self.assertEqual(Document2.deleted_objects.count(), 0)
 
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(4):
             # Delete all the references should not delete any document but should set the reference in the
             # corresponding documents to None.
-            # The 7 queries are:
-            #   - 4 for the transaction (savepoint and release savepoint)s
+            # The 4 queries are:
+            #   - 2 for the transaction (savepoint and release savepoint)s
             #   - 1 for select all the references that are not deleted
             #   - 1 for delete them (update the deleted field on those references)
-            #   - 1 to get the count of reference we deleted for the return value of the delete method
-            # The 2 times request to get the objects to cascade delete and then update should be merged to be honest
-            # but they are left like that for now for sake of simplicity
             Document2.objects.filter(id__in=[self.docs[2].id, self.docs[3].id]).delete()
 
         self.assertEqual(Reference.objects.count(), 3)

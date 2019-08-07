@@ -57,11 +57,13 @@ class SafeDeleteQueryset(query.QuerySet):
                 delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
             elif current_policy == SOFT_DELETE_CASCADE:
                 queryset_objects = list(self.all())
-                if len(queryset_objects) == 0:
-                    # If it is an empty query set nothing to do
+                nb_objects = len(queryset_objects)
+                if nb_objects == 0:
+                    # Don't do anything since the queryset is empty
                     return (0, {})
-                delete_returns.append(self.delete(force_policy=SOFT_DELETE))
-                # Soft-delete on related objects
+                self.update(deleted=timezone.now())
+                delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
+                # Do the cascade soft-delete on related objects
                 for model, related_objects in get_objects_to_delete(queryset_objects).items():
                     if is_safedelete_cls(model):
                         nb_objects = len(related_objects)
