@@ -51,7 +51,7 @@ class SafeDeleteModel(models.Model):
 
     _safedelete_policy = SOFT_DELETE
 
-    deleted = models.DateTimeField(editable=False, default=DEFAULT_DELETED)
+    deleted = models.DateTimeField(editable=False, default=DEFAULT_DELETED, db_index=True)
 
     objects = SafeDeleteManager()
     all_objects = SafeDeleteAllManager()
@@ -108,11 +108,18 @@ class SafeDeleteModel(models.Model):
 
             if current_policy == SOFT_DELETE_CASCADE:
                 # We get all the related objects (deleted or not) and we undelete the ones that are deleted
-                for model, related_objects in get_objects_to_delete(self, return_deleted=True).items():
+                for model, related_objects in get_objects_to_delete([self], return_deleted=True).items():
                     if is_safedelete_cls(model):
                         for related in related_objects:
                             if is_deleted(related):
                                 related.undelete()
+
+    @classmethod
+    def _get_safelete_policy(cls, force_policy=None):
+        """
+        Get the delete policy to apply.
+        """
+        return cls._safedelete_policy if (force_policy is None) else force_policy
 
     def delete(self, force_policy=None, **kwargs):
         """Overrides Django's delete behaviour based on the model's delete policy.
@@ -124,7 +131,8 @@ class SafeDeleteModel(models.Model):
         # Wrap everything in a transaction to make sure that if something fails everything gets rolled back
         delete_returns = []
         with transaction.atomic():
-            current_policy = self._safedelete_policy if (force_policy is None) else force_policy
+
+            current_policy = self._get_safelete_policy(force_policy=force_policy)
 
             if current_policy == NO_DELETE:
                 # Don't do anything.
@@ -148,7 +156,7 @@ class SafeDeleteModel(models.Model):
                 using = kwargs.get('using') or router.db_for_write(self.__class__, instance=self)
                 # send pre_softdelete signal
                 pre_softdelete.send(sender=self.__class__, instance=self, using=using)
-                super(SafeDeleteModel, self).save(**kwargs)
+                super(SafeDeleteModel, self).save(update_fields=["deleted"])
                 delete_returns.append((1, {self._meta.label: 1}))
                 # send softdelete signal
                 post_softdelete.send(sender=self.__class__, instance=self, using=using)
@@ -156,7 +164,7 @@ class SafeDeleteModel(models.Model):
             if current_policy == SOFT_DELETE_CASCADE:
                 # Soft-delete on related objects
                 logger.info("Delete {} {}".format(self.__class__.__name__, self.pk))
-                for model, related_objects in get_objects_to_delete(self).items():
+                for model, related_objects in get_objects_to_delete([self]).items():
                     if is_safedelete_cls(model):
                         logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
                         logger.debug("       {}".format([related.pk for related in related_objects]))
@@ -171,7 +179,7 @@ class SafeDeleteModel(models.Model):
 
                 # Do the updates that the delete implies.
                 # (for example in case of a relation `on_delete=models.SET_NULL`)
-                perform_updates(self)
+                perform_updates([self])
         return concatenate_delete_returns(*delete_returns)
 
     @classmethod

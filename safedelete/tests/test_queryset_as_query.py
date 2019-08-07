@@ -1,8 +1,6 @@
 from django.db import models
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Q, Avg, Max, Subquery
+from django.db.models import F, Q, Max, Subquery
 
-from ..managers import SafeDeleteManager, SafeDeleteQueryset
 from ..models import SafeDeleteModel, SOFT_DELETE_CASCADE
 from .testcase import SafeDeleteTestCase
 
@@ -329,7 +327,7 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         self.assertEqual(max_score, best_coffee_score)
 
         # Delete the best coffee
-        with self.assertNumQueries(len(self.AF)):
+        with self.assertNumQueries(6):
             result = coffee_performances.filter(
                 country__in=african_country_ids,
                 performance=max_score
@@ -411,9 +409,7 @@ class CustomQuerySetTestCase(SafeDeleteTestCase):
         with self.assertNumQueries(1):
             no_n_or_c_coffees = n_or_c_coffees.count()
         # delete all countries in region SOUTH AMERICA
-        with self.assertNumQueries(6 * 3 + 1):
-            # it does that many queries because each delete is wrapped in a transaction
-            # that add a savepoint and the its release in unit tests
+        with self.assertNumQueries(4):
             result = Country.objects.filter(region__name="SOUTH AMERICA").delete()
         self.assertIsNotNone(result)
         self.assertEqual(result[0], 6)

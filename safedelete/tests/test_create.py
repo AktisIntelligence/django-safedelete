@@ -1,11 +1,6 @@
-try:
-    from unittest import mock
-except ImportError:
-    import mock
-
 import django
-from django.db import connection, models, IntegrityError
-from django.test import override_settings, TransactionTestCase
+from django.db import IntegrityError, connection, models
+from django.test import TransactionTestCase, override_settings
 
 from ..config import SOFT_DELETE_CASCADE
 from ..models import SafeDeleteModel
