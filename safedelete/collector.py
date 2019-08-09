@@ -1,15 +1,5 @@
-from django.contrib.admin.utils import NestedObjects
 from django.db import router
-
-
-class FastNestedObjects(NestedObjects):
-
-    def can_fast_delete(self, *args, **kwargs):
-        """
-        For some weird reason they hard coded the NestedObjects Collector to not allow fast delete which means that it
-        load all the objects in memory... meaning it is very memory intensive and slow.
-        """
-        return True
+from django.db.models.deletion import Collector
 
 
 def get_collector(objs):
@@ -27,7 +17,7 @@ def get_collector(objs):
     Note that `collector.data` also contains the object itself.
     """
     # Assume we have at least one object (which is fine since we control where this method is called)
-    collector = FastNestedObjects(using=router.db_for_write(objs[0]))
+    collector = Collector(using=router.db_for_write(objs[0]))
     collector.collect(objs)
     collector.sort()
     return collector

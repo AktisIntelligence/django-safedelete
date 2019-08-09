@@ -43,18 +43,27 @@ def get_objects_to_delete(objs, return_deleted=False):
     If return_deleted is set to False it will exclude the already deleted objects.
     """
     collector = get_collector(objs)
+    fast_deletes = OrderedDict()
+    for fast_delete_qs in collector.fast_deletes:
+        model = fast_delete_qs.model
+        if model is objs[0].__class__:
+            fast_delete_qs = fast_delete_qs.exclude(pk__in=[o.pk for o in objs])
+        if is_safedelete_cls(model) and not return_deleted:
+            fast_delete_qs = fast_delete_qs.filter(deleted=DEFAULT_DELETED)
+        fast_deletes[model] = fast_delete_qs
     objects_to_delete = OrderedDict()
-    for model, instances in collector.data.items():
+    for model in collector.data:
+        instances = collector.data[model]
         # we don't want to have the input object in the list of objects to delete by cascade as we will handle it
         # separately.
         if model is objs[0].__class__:
             instances = [instance for instance in instances if instance not in objs]
         # If the model is a safedelete object we also want to exclude the already deleted objects.
-        if is_safedelete_cls(model):
-            instances = [instance for instance in instances if not is_deleted(instance) or return_deleted]
+        if is_safedelete_cls(model) and not return_deleted:
+            instances = [instance for instance in instances if not is_deleted(instance)]
         if len(instances) != 0:
             objects_to_delete[model] = instances
-    return objects_to_delete
+    return fast_deletes, objects_to_delete
 
 
 def perform_updates(objs):
@@ -80,7 +89,10 @@ def can_hard_delete(obj):
     """
     Check if it would delete other objects.
     """
-    return not bool(get_objects_to_delete([obj]))
+    fast_deletes, objects_to_delete = get_objects_to_delete([obj])
+    nb_objects_deleted = sum([fast_delete_qs.count() for fast_delete_qs in fast_deletes.values()])
+    nb_objects_deleted += sum([len(instances) for instances in objects_to_delete.values()])
+    return nb_objects_deleted == 0
 
 
 def concatenate_delete_returns(*args):

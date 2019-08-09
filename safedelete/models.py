@@ -108,7 +108,14 @@ class SafeDeleteModel(models.Model):
 
             if current_policy == SOFT_DELETE_CASCADE:
                 # We get all the related objects (deleted or not) and we undelete the ones that are deleted
-                for model, related_objects in get_objects_to_delete([self], return_deleted=True).items():
+                fast_deletes, objects_to_delete = get_objects_to_delete([self], return_deleted=True)
+                for model, related_objects_qs in fast_deletes.items():
+                    if is_safedelete_cls(model):
+                        # This could be done way more efficiently as we could not go through each object save
+                        # but I don't really care about undelete
+                        for related in related_objects_qs.exclude(deleted=DEFAULT_DELETED):
+                            related.undelete()
+                for model, related_objects in objects_to_delete.items():
                     if is_safedelete_cls(model):
                         for related in related_objects:
                             if is_deleted(related):
@@ -164,18 +171,20 @@ class SafeDeleteModel(models.Model):
             if current_policy == SOFT_DELETE_CASCADE:
                 # Soft-delete on related objects
                 logger.info("Delete {} {}".format(self.__class__.__name__, self.pk))
-                for model, related_objects in get_objects_to_delete([self]).items():
+                fast_deletes, objects_to_delete = get_objects_to_delete([self])
+                for model, related_objects_qs in fast_deletes.items():
                     if is_safedelete_cls(model):
-                        logger.info("  > cascade delete {} {}".format(len(related_objects), model.__name__))
-                        logger.debug("       {}".format([related.pk for related in related_objects]))
+                        # This could be done way more efficiently as we could not go through each object delete
+                        # but in case they have some custom logic in the delete it's better to do it that way
+                        for related in related_objects_qs:
+                            delete_returns.append(related.delete(force_policy=SOFT_DELETE, **kwargs))
+                for model, related_objects in objects_to_delete.items():
+                    if is_safedelete_cls(model):
                         for related in related_objects:
                             delete_returns.append(related.delete(force_policy=SOFT_DELETE, **kwargs))
-                    else:
-                        logger.info("  > cascade do not delete {} {} related objects as they can't be archived".format(
-                            len(related_objects), model.__name__))
-                        logger.debug("       {}".format([related.pk for related in related_objects]))
-                    # We don't do anything in the else here which means that we can leave some dangling objects if they
-                    # are not safe delete models...
+
+                # We don't do anything if it is not a safedelete model which means that we can leave some dangling
+                # objects if they are not safe delete models...
 
                 # Do the updates that the delete implies.
                 # (for example in case of a relation `on_delete=models.SET_NULL`)

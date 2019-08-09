@@ -1,5 +1,6 @@
 from django.db import models
 from django.test import TestCase
+
 from safedelete import SOFT_DELETE_CASCADE
 from safedelete.models import SafeDeleteModel
 from safedelete.tests.models import Article, Author, Category
