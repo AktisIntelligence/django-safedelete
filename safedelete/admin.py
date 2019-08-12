@@ -129,7 +129,7 @@ class SafeDeleteAdmin(admin.ModelAdmin):
 
         related_list = []
         fast_deletes, objects_to_delete = get_objects_to_delete(queryset)
-        for related_objects_qs in fast_deletes.values():
+        for related_objects_qs in fast_deletes:
             related_list.extend(list(related_objects_qs))
         for related_objects in objects_to_delete.values():
             related_list.extend(related_objects)

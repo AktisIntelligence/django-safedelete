@@ -61,7 +61,8 @@ class SafeDeleteModel(models.Model):
         abstract = True
 
     def save(self, keep_deleted=False, **kwargs):
-        """Save an object, un-deleting it if it was deleted.
+        """
+        Save an object, un-deleting it if it was deleted.
 
         Args:
             keep_deleted: Do not undelete the model if soft-deleted. (default: {False})
@@ -70,13 +71,11 @@ class SafeDeleteModel(models.Model):
         .. note::
             Undeletes soft-deleted models by default.
         """
-
         # undelete signal has to happen here (and not in undelete)
         # in order to catch the case where a deleted model becomes
         # implicitly undeleted on-save.  If someone manually nulls out
         # deleted, it'll bypass this logic, which I think is fine, because
         # otherwise we'd have to shadow field changes to handle that case.
-
         was_undeleted = False
         if not keep_deleted:
             if is_deleted(self) and self.pk:
@@ -109,7 +108,8 @@ class SafeDeleteModel(models.Model):
             if current_policy == SOFT_DELETE_CASCADE:
                 # We get all the related objects (deleted or not) and we undelete the ones that are deleted
                 fast_deletes, objects_to_delete = get_objects_to_delete([self], return_deleted=True)
-                for model, related_objects_qs in fast_deletes.items():
+                for related_objects_qs in fast_deletes:
+                    model = related_objects_qs.model
                     if is_safedelete_cls(model):
                         # This could be done way more efficiently as we could not go through each object save
                         # but I don't really care about undelete
@@ -129,7 +129,8 @@ class SafeDeleteModel(models.Model):
         return cls._safedelete_policy if (force_policy is None) else force_policy
 
     def delete(self, force_policy=None, **kwargs):
-        """Overrides Django's delete behaviour based on the model's delete policy.
+        """
+        Overrides Django's delete behaviour based on the model's delete policy.
 
         Args:
             force_policy: Force a specific delete policy. (default: {None})
@@ -172,7 +173,8 @@ class SafeDeleteModel(models.Model):
                 # Soft-delete on related objects
                 logger.info("Delete {} {}".format(self.__class__.__name__, self.pk))
                 fast_deletes, objects_to_delete = get_objects_to_delete([self])
-                for model, related_objects_qs in fast_deletes.items():
+                for related_objects_qs in fast_deletes:
+                    model = related_objects_qs.model
                     if is_safedelete_cls(model):
                         # This could be done way more efficiently as we could not go through each object delete
                         # but in case they have some custom logic in the delete it's better to do it that way

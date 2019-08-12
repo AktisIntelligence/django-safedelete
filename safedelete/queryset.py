@@ -29,7 +29,8 @@ class SafeDeleteQueryset(query.QuerySet):
     _safedelete_filter_applied = False
 
     def delete(self, force_policy=None):
-        """Overrides bulk delete behaviour.
+        """
+        Overrides bulk delete behaviour.
         Note that like Django implementation we don't call the custom delete of each models so if they have any magic
         in them it won't be applied.
 
@@ -65,7 +66,8 @@ class SafeDeleteQueryset(query.QuerySet):
                 delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
                 # Do the cascade soft-delete on related objects
                 fast_deletes, objects_to_delete = get_objects_to_delete(queryset_objects)
-                for model, related_objects_qs in fast_deletes.items():
+                for related_objects_qs in fast_deletes:
+                    model = related_objects_qs.model
                     if is_safedelete_cls(model):
                         # Note that the fast delete query sets are not safedelete query sets
                         nb_objects = related_objects_qs.count()
