@@ -1,5 +1,3 @@
-from django.db import models
-
 from .testcase import SafeDeleteTestCase
 from ..config import DELETED_VISIBLE
 from ..fields import SafeDeleteManyToManyField
