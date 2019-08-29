@@ -51,7 +51,7 @@ class SafeDeleteModel(models.Model):
 
     _safedelete_policy = SOFT_DELETE
 
-    deleted = models.DateTimeField(editable=False, default=DEFAULT_DELETED)
+    deleted = models.DateTimeField(editable=False, default=DEFAULT_DELETED, db_index=True)
 
     objects = SafeDeleteManager()
     all_objects = SafeDeleteAllManager()
