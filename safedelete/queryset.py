@@ -29,7 +29,8 @@ class SafeDeleteQueryset(query.QuerySet):
     _safedelete_filter_applied = False
 
     def delete(self, force_policy=None):
-        """Overrides bulk delete behaviour.
+        """
+        Overrides bulk delete behaviour.
         Note that like Django implementation we don't call the custom delete of each models so if they have any magic
         in them it won't be applied.
 
@@ -64,11 +65,20 @@ class SafeDeleteQueryset(query.QuerySet):
                 self.update(deleted=timezone.now())
                 delete_returns.append((nb_objects, {self.model._meta.label: nb_objects}))
                 # Do the cascade soft-delete on related objects
-                for model, related_objects in get_objects_to_delete(queryset_objects).items():
+                fast_deletes, objects_to_delete = get_objects_to_delete(queryset_objects)
+                for related_objects_qs in fast_deletes:
+                    model = related_objects_qs.model
                     if is_safedelete_cls(model):
-                        nb_objects = len(related_objects)
-                        related_objects_qs = model.objects.filter(pk__in=[o.pk for o in related_objects])
-                        delete_returns.append(related_objects_qs.delete(force_policy=SOFT_DELETE))
+                        # Note that the fast delete query sets are not safedelete query sets
+                        nb_objects = related_objects_qs.count()
+                        related_objects_qs.update(deleted=timezone.now())
+                        delete_returns.append((nb_objects, {model._meta.label: nb_objects}))
+                for model, related_objects in objects_to_delete.items():
+                    if is_safedelete_cls(model):
+                        # For the other instances we create the query set so we can just call the delete again and it
+                        # will go in the previous if
+                        related_instances_qs = model.objects.filter(pk__in=[o.pk for o in related_objects])
+                        delete_returns.append(related_instances_qs.delete(force_policy=SOFT_DELETE))
                 # Do the updates that the delete implies.
                 # (for example in case of a relation `on_delete=models.SET_NULL`)
                 perform_updates(queryset_objects)

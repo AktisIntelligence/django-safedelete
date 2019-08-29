@@ -1,7 +1,7 @@
-from ..config import DELETED_VISIBLE
-from ..models import SafeDeleteModel
-from ..fields import SafeDeleteManyToManyField
 from .testcase import SafeDeleteTestCase
+from ..config import DELETED_VISIBLE
+from ..fields import SafeDeleteManyToManyField
+from ..models import SafeDeleteModel
 
 
 class ManyToManyChild(SafeDeleteModel):
