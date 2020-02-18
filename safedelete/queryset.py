@@ -133,10 +133,6 @@ class SafeDeleteQueryset(query.QuerySet):
 
         return super(SafeDeleteQueryset, self).create(**kwargs)
 
-    @staticmethod
-    def get_field_name_as_id(field):
-        return "_".join([field.name, "id"])
-
     def _check_field_filter(self, **kwargs):
         """Check if the visibility for DELETED_VISIBLE_BY_FIELD needs t be put into effect.
 
