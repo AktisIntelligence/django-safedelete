@@ -123,18 +123,13 @@ class SafeDeleteQueryset(query.QuerySet):
         record.  We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
         selecting soft-deleted model instances should have already been taken care of.
         """
-        if not getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True):
-            fk_fields = [
-                field for field in self.model._meta.fields
-                if isinstance(field, ForeignKey) and self.get_field_name_as_id(field) in kwargs
-            ]
-
-            for field in fk_fields:
-                kwarg_key = self.get_field_name_as_id(field)
-                if field.related_model.deleted_objects.filter(pk=kwargs[kwarg_key]).exists():
-                    raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
-                        str(field.related_model), kwargs[kwarg_key]
-                    ))
+        if getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True) is False:
+            for field in self.model._meta.fields:
+                if isinstance(field, ForeignKey) and field.name in kwargs and kwargs[field.name] is not None:
+                    if field.related_model.deleted_objects.filter(pk=kwargs[field.name].pk).exists():
+                        raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
+                            str(field.related_model), kwargs[field.name]
+                        ))
 
         return super(SafeDeleteQueryset, self).create(**kwargs)
 
