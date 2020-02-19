@@ -122,7 +122,7 @@ class SafeDeleteQueryset(query.QuerySet):
         When we create a new object we need to check the FK fields to make sure we are not linking to a soft-deleted
         record.
         """
-        self.check_foreign_keys()
+        self.check_foreign_keys(**kwargs)
         return super(SafeDeleteQueryset, self).create(**kwargs)
 
     def check_foreign_keys(self, **kwargs):
