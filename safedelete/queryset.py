@@ -120,18 +120,31 @@ class SafeDeleteQueryset(query.QuerySet):
     def create(self, **kwargs):
         """
         When we create a new object we need to check the FK fields to make sure we are not linking to a soft-deleted
-        record.  We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
+        record.
+        """
+        self.check_foreign_keys()
+        return super(SafeDeleteQueryset, self).create(**kwargs)
+
+    def check_foreign_keys(self, **kwargs):
+        """
+        Check that the FK fields to make sure we are not linking to a soft-deleted record.
+        We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
         selecting soft-deleted model instances should have already been taken care of.
         """
         if getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True) is False:
             for field in self.model._meta.fields:
-                if isinstance(field, ForeignKey) and field.name in kwargs and kwargs[field.name] is not None:
+                if isinstance(field, ForeignKey) and \
+                        field.name in kwargs and kwargs[field.name] is not None and \
+                        self.field_name_as_id(field) in kwargs and self.field_name_as_id(field)[field.name] is not None:
+
                     if field.related_model.deleted_objects.filter(pk=kwargs[field.name].pk).exists():
                         raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
                             str(field.related_model), kwargs[field.name]
                         ))
 
-        return super(SafeDeleteQueryset, self).create(**kwargs)
+    @staticmethod
+    def field_name_as_id(field):
+        return "_".join([field.name, "id"])
 
     def _check_field_filter(self, **kwargs):
         """Check if the visibility for DELETED_VISIBLE_BY_FIELD needs t be put into effect.
