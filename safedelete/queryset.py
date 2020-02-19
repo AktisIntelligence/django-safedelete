@@ -133,13 +133,11 @@ class SafeDeleteQueryset(query.QuerySet):
         """
         if getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True) is False:
             for field in self.model._meta.fields:
-                if isinstance(field, ForeignKey) and \
-                        ((field.name in kwargs and
-                          kwargs[field.name] is not None) \
-                         or \
-                         (self.field_name_as_id(field) in kwargs and
-                          self.field_name_as_id(field)[field.name] is not None)):
+                field_flag = field.name in kwargs and kwargs[field.name] is not None
+                field_id_flag = self.field_name_as_id(field) in kwargs and \
+                                self.field_name_as_id(field)[field.name] is not None
 
+                if isinstance(field, ForeignKey) and (field_flag or field_id_flag):
                     if field.related_model.deleted_objects.filter(pk=kwargs[field.name].pk).exists():
                         raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
                             str(field.related_model), kwargs[field.name]
