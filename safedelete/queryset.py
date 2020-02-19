@@ -135,8 +135,8 @@ class SafeDeleteQueryset(query.QuerySet):
             for field in self.model._meta.fields:
                 if isinstance(field, ForeignKey) and \
                         ((field.name in kwargs and
-                          kwargs[field.name] is not None)
-                         or
+                          kwargs[field.name] is not None) \
+                         or \
                          (self.field_name_as_id(field) in kwargs and
                           self.field_name_as_id(field)[field.name] is not None)):
 
