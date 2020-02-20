@@ -110,6 +110,8 @@ If you do this the ``update_or_create()`` function from django's standard manage
 the ``created`` variable if the object was soft-deleted and is now "revived".
 
 
+``SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS`` if set to ``False`` will raise an integrity error when creating object
+which uses soft deleted data in ForeignKey field. Defaulted to ``False``.
 
 Documentation
 -------------
