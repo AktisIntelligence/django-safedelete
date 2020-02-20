@@ -88,11 +88,11 @@ class CreateTestCase(TransactionTestCase):
         """
         genus_id = self.lynx.id
 
-        # field__id
+        # field_id
         with self.assertRaises(SafeDeleteIntegrityError) as context:
             Species.objects.create(name="Bobcat", genus_id=genus_id, endangered_id="LC")
         self.assertEqual(
-            "The related <class 'safedelete.tests.test_create.Genus'> object with pk {} has been soft-deleted"
+            "The related Genus object with pk {} has been soft-deleted"
             .format(genus_id), str(context.exception)
         )
         self.assertFalse(Species.objects.filter(name="Bobcat").exists())
@@ -101,7 +101,7 @@ class CreateTestCase(TransactionTestCase):
         with self.assertRaises(SafeDeleteIntegrityError) as context:
             Species.objects.create(name="Bobcat", genus=self.lynx, endangered_id="LC")
         self.assertEqual(
-            "The related <class 'safedelete.tests.test_create.Genus'> object with pk {} has been soft-deleted"
+            "The related Genus object with pk {} has been soft-deleted"
             .format(genus_id), str(context.exception)
         )
         self.assertFalse(Species.objects.filter(name="Bobcat").exists())
