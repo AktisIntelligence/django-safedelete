@@ -120,26 +120,39 @@ class SafeDeleteQueryset(query.QuerySet):
     def create(self, **kwargs):
         """
         When we create a new object we need to check the FK fields to make sure we are not linking to a soft-deleted
-        record.  We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
-        selecting soft-deleted model instances should have already been taken care of.
+        record.
         """
-        if not getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', True):
-            fk_fields = [
-                field for field in self.model._meta.fields
-                if isinstance(field, ForeignKey) and self.get_field_name_as_id(field) in kwargs
-            ]
-
-            for field in fk_fields:
-                kwarg_key = self.get_field_name_as_id(field)
-                if field.related_model.deleted_objects.filter(pk=kwargs[kwarg_key]).exists():
-                    raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
-                        str(field.related_model), kwargs[kwarg_key]
-                    ))
-
+        self.check_foreign_keys(**kwargs)
         return super(SafeDeleteQueryset, self).create(**kwargs)
 
+    def check_foreign_keys(self, **kwargs):
+        """
+        Check that the FK fields to make sure we are not linking to a soft-deleted record.
+        We only need to worry about the case where it is a FK id passed in (not an FK model instance) because
+        selecting soft-deleted model instances should have already been taken care of.
+        """
+        if getattr(settings, 'SAFE_DELETE_ALLOW_FK_TO_SOFT_DELETED_OBJECTS', False) is False:
+            integrity_error_pk = None
+            for field in self.model._meta.fields:
+                if isinstance(field, ForeignKey):
+
+                    if kwargs.get(field.name, None) is not None and \
+                            is_safedelete_cls(field.related_model) and \
+                            field.related_model.deleted_objects.filter(pk=kwargs[field.name].pk).exists():
+                        integrity_error_pk = kwargs[field.name].pk
+
+                    if kwargs.get(self.field_and_id(field), None) is not None and \
+                            is_safedelete_cls(field.related_model) and \
+                            field.related_model.deleted_objects.filter(pk=kwargs[self.field_and_id(field)]).exists():
+                        integrity_error_pk = kwargs[self.field_and_id(field)]
+
+                    if integrity_error_pk:
+                        raise SafeDeleteIntegrityError("The related {} object with pk {} has been soft-deleted".format(
+                            str(field.related_model), integrity_error_pk
+                        ))
+
     @staticmethod
-    def get_field_name_as_id(field):
+    def field_and_id(field):
         return "_".join([field.name, "id"])
 
     def _check_field_filter(self, **kwargs):
