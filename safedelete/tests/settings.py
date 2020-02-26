@@ -34,7 +34,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.admin',
-    'django.contrib.messages',
+    'django.contrib.messages',  # dependency of admin
     'safedelete',
 )
 
